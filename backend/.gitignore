@@ -1,0 +1,168 @@
+# Environment Variables - NEVER COMMIT
+.env
+.env.local
+.env.*.local
+env.local
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+
+# Virtual Environments
+venv/
+env/
+.venv/
+ENV/
+env.bak/
+venv.bak/
+
+# Distribution / packaging
+dist/
+build/
+*.egg-info/
+.eggs/
+*.egg
+
+# PyInstaller
+*.manifest
+*.spec
+
+# Unit test / coverage
+.pytest_cache/
+.coverage
+.coverage.*
+htmlcov/
+.tox/
+.nox/
+coverage.xml
+*.cover
+.hypothesis/
+
+# Logs
+*.log
+logs/
+
+# Database
+*.db
+*.sqlite
+*.sqlite3
+
+# Redis
+dump.rdb
+
+# Secrets - CRITICAL
+secrets.json
+credentials.json
+*.pem
+*.key
+*.cert
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# MyPy
+.mypy_cache/
+.dmypy.json
+dmypy.json
+
+# Pyre
+.pyre/
+
+# Celery
+celerybeat-schedule
+celerybeat.pid
+
+# IPython
+.ipynb_checkpoints
+
+# Backup files
+*.bak
+*.backup
+*~
+
+# Archive files (may contain sensitive data)
+*.tar
+*.tar.gz
+*.tgz
+*.zip
+*.rar
+*.7z
+
+# SQL dumps (may contain sensitive data)
+*.sql.gz
+*.sql.zip
+dump.sql
+backup.sql
+*.dump
+
+# CSV/Excel exports (may contain PII)
+exports/
+*.csv
+*.xlsx
+*.xls
+
+# Docker volumes/data
+.docker/
+docker-data/
+postgres-data/
+redis-data/
+
+# Kubernetes secrets
+*.kubeconfig
+k8s-secrets.yaml
+secrets.yaml
+
+# Terraform state files
+*.tfstate
+*.tfstate.*
+.terraform/
+terraform.tfvars
+
+# Ansible vault files
+vault.yml
+vault-password.txt
+*.vault
+
+# SSH Keys
+*.pem
+*.ppk
+id_rsa*
+id_dsa*
+id_ecdsa*
+id_ed25519*
+
+# SSL Certificates
+*.crt
+*.key
+*.csr
+*.cer
+*.p12
+*.pfx
+
+# Local config overrides
+config.local.py
+settings.local.py
+local_settings.py
+
+# Profiling data
+*.prof
+*.pyprof
+.profiling/
+
+# Jupyter notebooks with outputs
+*.ipynb
+
+# Migration data
+migrations/data/
+migration_backup/
+

@@ -1,0 +1,47 @@
+services:
+  - type: web
+    name: saas-backend
+    env: python
+    region: oregon
+    plan: starter
+    buildCommand: pip install -r requirements.txt
+    startCommand: uvicorn main:app --host 0.0.0.0 --port $PORT
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.11.0
+      - key: SUPABASE_URL
+        sync: false
+      - key: SUPABASE_ANON_KEY
+        sync: false
+      - key: SUPABASE_SERVICE_KEY
+        sync: false
+      - key: STRIPE_SECRET_KEY
+        sync: false
+      - key: STRIPE_WEBHOOK_SECRET
+        sync: false
+      - key: STRIPE_PUBLISHABLE_KEY
+        sync: false
+      - key: REDIS_URL
+        fromService:
+          type: redis
+          name: saas-redis
+          property: connectionString
+      - key: DOCKER_REGISTRY_URL
+        sync: false
+      - key: DOCKER_REGISTRY_TOKEN
+        sync: false
+      - key: EMAIL_PROVIDER_API_KEY
+        sync: false
+      - key: API_URL
+        value: https://saas-backend.onrender.com
+      - key: FRONTEND_URL
+        value: https://your-frontend-domain.vercel.app
+      - key: ENVIRONMENT
+        value: production
+
+  - type: redis
+    name: saas-redis
+    region: oregon
+    plan: starter
+    ipAllowList: []
+

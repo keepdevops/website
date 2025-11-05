@@ -1,0 +1,222 @@
+# Dependencies
+/node_modules
+/.pnp
+.pnp.js
+.yarn/install-state.gz
+
+# Testing
+/coverage
+
+# Next.js
+/.next/
+/out/
+
+# Production
+/build
+
+# Misc
+.DS_Store
+*.pem
+
+# Debug
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Environment Variables - NEVER COMMIT THESE
+.env
+.env*.local
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# Vercel
+.vercel
+
+# TypeScript
+*.tsbuildinfo
+next-env.d.ts
+
+# Python (Backend)
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+backend/.env
+backend/venv/
+backend/env/
+backend/.venv/
+backend/ENV/
+
+# IDEs
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.project
+.classpath
+.settings/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+logs/
+*.log.*
+
+# Temporary files
+*.tmp
+*.temp
+.cache/
+
+# Secrets & Keys - CRITICAL
+*.pem
+*.key
+*.cert
+*.p12
+*.pfx
+secrets.json
+credentials.json
+
+# Database
+*.db
+*.sqlite
+*.sqlite3
+
+# Redis dump
+dump.rdb
+
+# Backup files
+*.bak
+*.backup
+*~
+
+# Archive files (may contain sensitive data)
+*.tar
+*.tar.gz
+*.tgz
+*.zip
+*.rar
+*.7z
+
+# Docker sensitive files
+docker-compose.override.yml
+.dockerignore
+Dockerfile.local
+
+# SSH Keys
+*.pem
+*.ppk
+id_rsa
+id_rsa.pub
+id_dsa
+id_dsa.pub
+id_ecdsa
+id_ecdsa.pub
+id_ed25519
+id_ed25519.pub
+known_hosts
+authorized_keys
+
+# SSL/TLS Certificates
+*.crt
+*.cer
+*.ca-bundle
+*.p7b
+*.p7s
+*.pfx
+*.p12
+
+# API Documentation with keys
+.env.*.api
+api-keys.json
+api-config.json
+
+# Local configuration
+config.local.*
+settings.local.*
+.vscode/settings.json
+
+# Test data that might contain real info
+fixtures/
+test-data/
+seed-data/
+
+# Temporary upload directories
+uploads/
+tmp/
+temp/
+
+# Session files
+.sessions/
+sessions/
+
+# Compiled binary files
+*.exe
+*.dll
+*.so
+*.dylib
+
+# Package manager locks (optional - can be excluded)
+# package-lock.json
+# yarn.lock
+# pnpm-lock.yaml
+
+# macOS
+.AppleDouble
+.LSOverride
+Icon
+._*
+.DocumentRevisions-V100
+.fseventsd
+.Spotlight-V100
+.TemporaryItems
+.Trashes
+.VolumeIcon.icns
+.com.apple.timemachine.donotpresent
+
+# Windows
+ehthumbs.db
+ehthumbs_vista.db
+[Dd]esktop.ini
+$RECYCLE.BIN/
+
+# Linux
+.directory
+.Trash-*
+
+# Coverage reports
+htmlcov/
+.coverage
+.coverage.*
+coverage.xml
+*.cover
+
+# Pytest
+.pytest_cache/
+.tox/
+
+# MyPy
+.mypy_cache/
+.dmypy.json
+dmypy.json
+
+# Jupyter Notebook
+.ipynb_checkpoints
+
+# Distribution / packaging
+dist/
+build/
+*.egg-info/
+.eggs/
+
+# Stripe CLI
+.stripe/
+
+# Docker
+docker-compose.override.yml
