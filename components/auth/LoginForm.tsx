@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { loginUser } from '@/lib/api-client'
+import TwoFactorVerify from './TwoFactorVerify'
 
 export default function LoginForm() {
   const router = useRouter()
@@ -10,6 +11,8 @@ export default function LoginForm() {
   const [password, setPassword] = useState('')
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
+  const [requires2FA, setRequires2FA] = useState(false)
+  const [userId, setUserId] = useState('')
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -20,10 +23,37 @@ export default function LoginForm() {
       await loginUser(email, password)
       router.push('/dashboard')
     } catch (err: any) {
-      setError(err.response?.data?.detail || 'Login failed')
+      // Check if 2FA is required
+      if (err.response?.status === 403 && err.response?.data?.detail === '2FA verification required') {
+        const userIdFromHeader = err.response?.headers?.['x-user-id']
+        if (userIdFromHeader) {
+          setUserId(userIdFromHeader)
+          setRequires2FA(true)
+        } else {
+          setError('2FA required but user ID not found')
+        }
+      } else {
+        setError(err.response?.data?.detail || 'Login failed')
+      }
     } finally {
       setLoading(false)
     }
+  }
+
+  const handle2FAVerified = () => {
+    router.push('/dashboard')
+  }
+
+  if (requires2FA && userId) {
+    return (
+      <TwoFactorVerify 
+        onVerified={handle2FAVerified}
+        onCancel={() => {
+          setRequires2FA(false)
+          setUserId('')
+        }}
+      />
+    )
   }
 
   return (
@@ -70,4 +100,5 @@ export default function LoginForm() {
     </form>
   )
 }
+
 

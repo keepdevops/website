@@ -1,0 +1,103 @@
+# Shared Deployment Configuration
+# Provider-agnostic service definitions
+
+services:
+  # Backend API Service
+  backend:
+    name: saas-backend
+    type: web
+    runtime: python
+    version: "3.11.0"
+    region: us-west
+    build_command: pip install -r requirements.txt
+    start_command: uvicorn main:app --host 0.0.0.0 --port $PORT
+    
+    resources:
+      memory: 512MB
+      instances: 1
+      auto_scale: true
+      min_instances: 1
+      max_instances: 3
+    
+    health_check:
+      path: /health
+      interval: 30
+      timeout: 10
+    
+    env_vars:
+      PYTHON_VERSION: "3.11.0"
+      ENVIRONMENT: production
+      API_URL: https://api.example.com
+      FRONTEND_URL: https://app.example.com
+    
+    secrets:
+      - SUPABASE_URL
+      - SUPABASE_ANON_KEY
+      - SUPABASE_SERVICE_KEY
+      - STRIPE_SECRET_KEY
+      - STRIPE_WEBHOOK_SECRET
+      - STRIPE_PUBLISHABLE_KEY
+      - REDIS_URL
+      - JWT_SECRET_KEY
+      - DOCKER_REGISTRY_URL
+      - DOCKER_REGISTRY_TOKEN
+      - EMAIL_PROVIDER_API_KEY
+
+  # Redis Cache Service
+  redis:
+    name: saas-redis
+    type: cache
+    version: "7"
+    region: us-west
+    
+    resources:
+      memory: 256MB
+      instances: 1
+
+  # Frontend Application (for static/SSR)
+  frontend:
+    name: saas-frontend
+    type: static
+    runtime: node
+    version: "20"
+    build_command: npm run build
+    start_command: npm start
+    
+    resources:
+      memory: 512MB
+      instances: 1
+    
+    env_vars:
+      NODE_ENV: production
+      NEXT_PUBLIC_API_URL: https://api.example.com
+    
+    secrets:
+      - NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY
+      - NEXT_PUBLIC_SUPABASE_URL
+      - NEXT_PUBLIC_SUPABASE_ANON_KEY
+
+# Global Configuration
+global:
+  default_region: us-west
+  auto_deploy: true
+  build_timeout: 600  # seconds
+  
+# Provider-specific overrides (optional)
+providers:
+  render:
+    plan: starter
+    region: oregon
+  
+  railway:
+    region: us-west1
+  
+  flyio:
+    region: sea  # Seattle
+    primary_region: sea
+  
+  vercel:
+    framework: nextjs
+    regions:
+      - iad1  # Washington, D.C.
+      - sfo1  # San Francisco
+

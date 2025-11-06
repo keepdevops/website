@@ -20,10 +20,13 @@ export default function TwoFactorVerify({ onVerified, onCancel }: TwoFactorVerif
     setError('')
 
     try {
-      const endpoint = useBackupCode ? '/api/2fa/verify-backup' : '/api/2fa/verify'
-      const payload = useBackupCode ? { backup_code: code } : { code }
-      
-      await api.post(endpoint, payload)
+      if (useBackupCode) {
+        // For backup codes, use the regular verify endpoint
+        await api.post('/api/2fa/verify-backup', { backup_code: code })
+      } else {
+        // For TOTP codes during login, use the dedicated login endpoint
+        await api.post('/api/2fa/verify', { code })
+      }
       onVerified()
     } catch (err: any) {
       setError(err.response?.data?.detail || 'Verification failed')
@@ -90,4 +93,5 @@ export default function TwoFactorVerify({ onVerified, onCancel }: TwoFactorVerif
     </div>
   )
 }
+
 

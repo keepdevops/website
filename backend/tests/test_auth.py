@@ -82,3 +82,5 @@ def test_register_short_password():
     })
     assert response.status_code == 422
 
+
+

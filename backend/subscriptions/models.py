@@ -51,3 +51,5 @@ class BillingPortalResponse(BaseModel):
 class SubscriptionCancelRequest(BaseModel):
     immediately: bool = False
 
+
+

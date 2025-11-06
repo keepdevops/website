@@ -166,3 +166,5 @@ class TwoFactorService:
         except Exception as e:
             logger.error(f"Error logging 2FA verification: {str(e)}")
 
+
+

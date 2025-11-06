@@ -76,3 +76,5 @@ class InvoiceWebhookHandler:
         result = await self.db.get_all("profiles", {"stripe_customer_id": customer_id}, limit=1)
         return result.data[0] if result.data else None
 
+
+

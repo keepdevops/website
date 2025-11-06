@@ -1,29 +1,60 @@
-from typing import List, Optional
-import httpx
-from config import settings
+from typing import List, Optional, Dict, Any
+from core.email_interface import (
+    EmailProviderInterface,
+    EmailMessage,
+    EmailResult
+)
+from core.email_provider_factory import get_email_provider
+from email_providers.templates import EmailTemplateManager
 import logging
 
 logger = logging.getLogger(__name__)
 
+
 class EmailService:
-    def __init__(self):
-        self.api_key = settings.email_provider_api_key
-        self.from_email = "noreply@yoursaas.com"
+    """High-level email service using pluggable providers"""
+    
+    def __init__(self, provider: EmailProviderInterface):
+        self.provider = provider
+        self.template_manager = EmailTemplateManager()
     
     async def send_email(
         self,
         to_email: str,
         subject: str,
         content: str,
-        html_content: Optional[str] = None
+        html_content: Optional[str] = None,
+        from_email: Optional[str] = None
     ) -> bool:
-        try:
-            logger.info(f"Sending email to {to_email} with subject: {subject}")
-            return True
+        """
+        Send a simple email.
         
-        except Exception as e:
-            logger.error(f"Error sending email: {str(e)}")
-            return False
+        Args:
+            to_email: Recipient email address
+            subject: Email subject
+            content: Plain text content
+            html_content: Optional HTML content
+            from_email: Optional sender email
+        
+        Returns:
+            True if sent successfully
+        """
+        message = EmailMessage(
+            to=[to_email],
+            subject=subject,
+            text_content=content,
+            html_content=html_content,
+            from_email=from_email
+        )
+        
+        result = await self.provider.send_email(message)
+        
+        if result.success:
+            logger.info(f"Email sent to {to_email} via {self.provider.provider_name}")
+        else:
+            logger.error(f"Failed to send email to {to_email}: {result.error}")
+        
+        return result.success
     
     async def send_bulk_email(
         self,
@@ -31,58 +62,65 @@ class EmailService:
         subject: str,
         content: str,
         html_content: Optional[str] = None
-    ) -> dict:
-        sent_count = 0
-        failed_count = 0
-        
+    ) -> Dict[str, int]:
+        """Send bulk emails to multiple recipients"""
+        messages = []
         for recipient in recipients:
-            success = await self.send_email(recipient, subject, content, html_content)
-            if success:
-                sent_count += 1
-            else:
-                failed_count += 1
+            messages.append(EmailMessage(
+                to=[recipient],
+                subject=subject,
+                text_content=content,
+                html_content=html_content
+            ))
+        
+        result = await self.provider.send_bulk(messages)
         
         return {
-            "sent": sent_count,
-            "failed": failed_count,
-            "total": len(recipients)
+            "sent": result.sent,
+            "failed": result.failed,
+            "total": result.total
         }
     
     async def send_transactional_email(
         self,
         to_email: str,
         template_name: str,
-        variables: dict
+        variables: Dict[str, Any]
     ) -> bool:
-        templates = {
-            "welcome": {
-                "subject": "Welcome to Our Platform!",
-                "content": "Hello {name}, welcome aboard!"
-            },
-            "subscription_created": {
-                "subject": "Subscription Confirmed",
-                "content": "Your subscription is now active."
-            },
-            "payment_failed": {
-                "subject": "Payment Failed",
-                "content": "We couldn't process your payment."
-            },
-            "subscription_cancelled": {
-                "subject": "Subscription Cancelled",
-                "content": "Your subscription has been cancelled."
-            }
-        }
+        """
+        Send transactional email using template.
         
-        template = templates.get(template_name)
-        if not template:
-            logger.error(f"Template not found: {template_name}")
+        Args:
+            to_email: Recipient email
+            template_name: Template name (e.g., 'welcome', 'password_reset')
+            variables: Template variables
+        
+        Returns:
+            True if sent successfully
+        """
+        try:
+            rendered = self.template_manager.render(template_name, variables)
+            
+            message = EmailMessage(
+                to=[to_email],
+                subject=rendered["subject"],
+                text_content=rendered["text"],
+                html_content=rendered.get("html"),
+                tags=[template_name]
+            )
+            
+            result = await self.provider.send_email(message)
+            return result.success
+        
+        except Exception as e:
+            logger.error(f"Error sending transactional email: {str(e)}")
             return False
-        
-        subject = template["subject"]
-        content = template["content"].format(**variables)
-        
-        return await self.send_email(to_email, subject, content)
+
 
 def get_email_service() -> EmailService:
-    return EmailService()
+    """Get EmailService instance with configured provider"""
+    provider = get_email_provider()
+    return EmailService(provider)
+
+
 

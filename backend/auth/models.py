@@ -41,3 +41,8 @@ class EmailVerification(BaseModel):
 class RefreshTokenRequest(BaseModel):
     refresh_token: str
 
+class TwoFactorLoginVerify(BaseModel):
+    user_id: str
+    code: str
+
+

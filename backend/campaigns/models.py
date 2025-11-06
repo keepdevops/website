@@ -42,3 +42,5 @@ class EmailTemplate(BaseModel):
     content: str
     created_at: datetime
 
+
+

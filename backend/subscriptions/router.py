@@ -8,12 +8,14 @@ from subscriptions.service import SubscriptionService
 from core.database import get_database, Database
 from core.dependencies import get_current_user
 from core.event_bus import get_event_bus, EventBus
+from core.payment_provider_factory import get_payment_provider
 from typing import List
 
 router = APIRouter(prefix="/api/subscriptions", tags=["Subscriptions"])
 
 def get_subscription_service(db: Database = Depends(get_database)) -> SubscriptionService:
-    return SubscriptionService(db)
+    payment_provider = get_payment_provider(db)
+    return SubscriptionService(db, payment_provider)
 
 @router.post("/checkout", response_model=CheckoutSessionResponse)
 async def create_checkout_session(
@@ -82,4 +84,5 @@ async def get_available_prices(
     subscription_service: SubscriptionService = Depends(get_subscription_service)
 ):
     return await subscription_service.get_available_prices()
+
 

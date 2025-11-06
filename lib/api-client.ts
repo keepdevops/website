@@ -84,3 +84,41 @@ export async function createDownloadToken(imageName: string, tag: string = 'late
   return data
 }
 
+// Two-Factor Authentication Functions
+export async function setup2FA() {
+  const { data } = await api.post('/api/2fa/setup')
+  return data
+}
+
+export async function enable2FA(code: string) {
+  const { data } = await api.post('/api/2fa/enable', { code })
+  return data
+}
+
+export async function verify2FA(code: string) {
+  const { data } = await api.post('/api/2fa/verify', { code })
+  return data
+}
+
+export async function verifyBackupCode(backupCode: string) {
+  const { data } = await api.post('/api/2fa/verify-backup', { backup_code: backupCode })
+  return data
+}
+
+export async function disable2FA(password: string, code?: string) {
+  const { data } = await api.post('/api/2fa/disable', { password, code })
+  return data
+}
+
+export async function get2FAStatus() {
+  const { data } = await api.get('/api/2fa/status')
+  return data
+}
+
+export async function complete2FALogin(userId: string, code: string) {
+  const { data } = await api.post('/api/auth/login/2fa', { user_id: userId, code })
+  localStorage.setItem('access_token', data.access_token)
+  return data
+}
+
+

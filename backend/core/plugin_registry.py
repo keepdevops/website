@@ -25,7 +25,8 @@ class PluginRegistry:
             "customers",
             "docker_registry",
             "campaigns",
-            "analytics"
+            "analytics",
+            "two_factor"
         ]
         
         for plugin_dir in plugin_dirs:
@@ -73,4 +74,5 @@ class PluginRegistry:
     async def shutdown_all(self):
         for plugin in self.plugins.values():
             await plugin.shutdown()
+
 

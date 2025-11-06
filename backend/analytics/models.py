@@ -21,3 +21,5 @@ class UserActivity(BaseModel):
     downloads_count: int
     subscription_status: Optional[str] = None
 
+
+

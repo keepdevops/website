@@ -33,3 +33,5 @@ class DockerCredentials(BaseModel):
     password: str
     registry_url: str
 
+
+

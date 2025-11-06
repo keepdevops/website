@@ -2,33 +2,42 @@ from datetime import datetime, timedelta
 from typing import List, Optional
 from core.database import Database
 from core.cache import Cache
+from core.analytics_interface import AnalyticsProviderInterface
+from core.analytics_factory import get_analytics_providers
 from analytics.models import UsageEvent, AnalyticsData, UserActivity
 import logging
 
 logger = logging.getLogger(__name__)
 
+
 class AnalyticsService:
+    """High-level analytics service using pluggable providers"""
+    
     def __init__(self, db: Database, cache: Cache):
         self.db = db
         self.cache = cache
+        self.providers = get_analytics_providers(db)
     
     async def track_event(self, event: UsageEvent):
-        event_data = {
-            "user_id": event.user_id,
-            "event_type": event.event_type,
-            "metadata": event.metadata or {},
-            "created_at": datetime.utcnow().isoformat()
-        }
+        """Track event to all configured analytics providers"""
+        # Track to all providers
+        for provider in self.providers:
+            try:
+                await provider.track_event(
+                    event_name=event.event_type,
+                    user_id=event.user_id,
+                    properties=event.metadata
+                )
+            except Exception as e:
+                logger.error(f"Provider {provider.provider_name} error: {str(e)}")
         
+        # Cache user activity
         try:
-            await self.db.create("usage_events", event_data)
-            
             cache_key = f"user_activity:{event.user_id}"
             await self.cache.increment(cache_key)
             await self.cache.expire(cache_key, 86400)
-        
         except Exception as e:
-            logger.error(f"Error tracking event: {str(e)}")
+            logger.error(f"Error updating cache: {str(e)}")
     
     async def get_analytics_overview(self) -> AnalyticsData:
         cached = await self.cache.get_json("analytics:overview")
@@ -75,4 +84,6 @@ class AnalyticsService:
     async def get_recent_activity(self, limit: int = 100):
         result = await self.db.get_all("usage_events", limit=limit)
         return result.data or []
+
+
 

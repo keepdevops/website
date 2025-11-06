@@ -96,3 +96,5 @@ async def test_get_available_prices(mock_list):
     
     assert response.status_code in [200, 404]
 
+
+

@@ -48,3 +48,5 @@ class BasePlugin(PluginInterface):
         self._router = APIRouter(prefix=prefix, tags=tags)
         return self._router
 
+
+

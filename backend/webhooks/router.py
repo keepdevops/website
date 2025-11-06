@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, Request, BackgroundTasks
+from fastapi import APIRouter, Depends, Request, BackgroundTasks, HTTPException, status
 from webhooks.validator import WebhookValidator
 from webhooks.processor import WebhookProcessor
 from webhooks.handlers.subscription import SubscriptionWebhookHandler
@@ -7,6 +7,7 @@ from webhooks.handlers.invoice import InvoiceWebhookHandler
 from core.database import get_database, Database
 from core.cache import get_cache, Cache
 from core.event_bus import get_event_bus, EventBus
+from core.payment_provider_factory import get_payment_provider_by_name
 import logging
 
 logger = logging.getLogger(__name__)
@@ -39,21 +40,59 @@ def get_webhook_processor(
     
     return processor
 
+@router.post("/{provider}")
+async def handle_webhook(
+    provider: str,
+    request: Request,
+    background_tasks: BackgroundTasks,
+    db: Database = Depends(get_database),
+    cache: Cache = Depends(get_cache),
+    processor: WebhookProcessor = Depends(get_webhook_processor)
+):
+    """
+    Handle webhook from payment provider.
+    
+    Provider-agnostic endpoint that delegates to the appropriate payment provider.
+    URL pattern: /api/webhooks/{provider} (e.g., /api/webhooks/stripe)
+    """
+    try:
+        # Get provider-specific implementation
+        payment_provider = get_payment_provider_by_name(provider, db)
+    except ValueError:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Unknown payment provider: {provider}"
+        )
+    
+    # Validate request size
+    validator = WebhookValidator(cache)
+    validator.validate_request_size(request)
+    
+    # Verify webhook signature using provider
+    event = await payment_provider.verify_webhook(request)
+    
+    # Validate event (check for duplicates)
+    if not await validator.validate_event(event):
+        logger.info(f"Duplicate {provider} webhook event: {event.get('type')}")
+        return {"status": "duplicate"}
+    
+    # Process event in background
+    background_tasks.add_task(processor.process_event, event)
+    
+    logger.info(f"Accepted {provider} webhook: {event.get('type')}")
+    return {"status": "received"}
+
+
+# Legacy Stripe endpoint for backward compatibility
 @router.post("/stripe")
 async def handle_stripe_webhook(
     request: Request,
     background_tasks: BackgroundTasks,
-    validator: WebhookValidator = Depends(get_webhook_validator),
+    db: Database = Depends(get_database),
+    cache: Cache = Depends(get_cache),
     processor: WebhookProcessor = Depends(get_webhook_processor)
 ):
-    validator.validate_request_size(request)
-    
-    event = await validator.verify_stripe_signature(request)
-    
-    if not await validator.validate_event(event):
-        return {"status": "duplicate"}
-    
-    background_tasks.add_task(processor.process_event, event)
-    
-    return {"status": "received"}
+    """Legacy Stripe webhook endpoint (redirects to new provider-agnostic endpoint)"""
+    return await handle_webhook("stripe", request, background_tasks, db, cache, processor)
+
 

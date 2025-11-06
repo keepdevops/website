@@ -130,3 +130,5 @@ CREATE INDEX idx_download_logs_user_id ON download_logs(user_id);
 CREATE INDEX idx_usage_events_user_id ON usage_events(user_id);
 CREATE INDEX idx_campaigns_status ON campaigns(status);
 
+
+

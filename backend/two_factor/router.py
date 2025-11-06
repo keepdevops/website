@@ -100,3 +100,5 @@ async def get_2fa_status(
 ):
     return await service.get_2fa_status(current_user["id"])
 
+
+

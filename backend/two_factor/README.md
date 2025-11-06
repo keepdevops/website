@@ -1,332 +1,301 @@
-# Two-Factor Authentication Module
+# Two-Factor Authentication (2FA) Module
 
-Complete 2FA implementation with TOTP (Time-based One-Time Password) support. All files ≤200 LOC.
+## Overview
+This module implements TOTP-based Two-Factor Authentication for the SaaS platform, providing an additional layer of security for user accounts.
 
 ## Features
-
-- ✅ TOTP authentication (Google Authenticator, Authy, etc.)
-- ✅ QR code generation for easy setup
+- ✅ TOTP (Time-based One-Time Password) support
+- ✅ QR code generation for easy authenticator app setup
 - ✅ Backup codes for account recovery
-- ✅ Verification logging for audit
-- ✅ Event bus integration
-- ✅ Secure secret storage
-- ✅ Time-based code validation with 30s window
+- ✅ 2FA verification logs
+- ✅ Integration with login flow
+- ✅ Row-level security policies
 
-## File Structure
+## Database Schema
+The module uses two database components:
+1. **profiles table** - Extended with 2FA columns:
+   - `two_factor_enabled` (boolean)
+   - `two_factor_secret` (text)
+   - `two_factor_method` (text)
+   - `backup_codes` (text array)
+   - `two_factor_enabled_at` (timestamp)
 
-```
-two_factor/
-├── models.py       (45 LOC)  - Pydantic schemas
-├── service.py      (195 LOC) - 2FA business logic
-├── router.py       (110 LOC) - API endpoints
-├── schema.sql      (35 LOC)  - Database schema
-└── README.md                 - This file
-```
-
-## Installation
-
-Dependencies added to `requirements.txt`:
-- `pyotp==2.9.0` - TOTP generation/verification
-- `qrcode[pil]==7.4.2` - QR code generation
-
-```bash
-pip install -r requirements.txt
-```
-
-## Database Setup
-
-Run the migration:
-
-```sql
--- In Supabase SQL Editor
-\i backend/two_factor/schema.sql
-```
-
-This adds:
-- 2FA columns to `profiles` table
-- `two_factor_logs` table for audit trail
-- RLS policies for security
+2. **two_factor_logs table** - Audit trail:
+   - `id` (uuid)
+   - `user_id` (uuid, FK to profiles)
+   - `method` (text: 'totp' or 'backup_code')
+   - `success` (boolean)
+   - `verified_at` (timestamp)
+   - `ip_address` (text)
 
 ## API Endpoints
 
-### 1. Setup 2FA
+### Setup 2FA
+```http
+POST /api/2fa/setup
+Authorization: Bearer <token>
 
-**POST** `/api/2fa/setup`
-
-**Auth**: Required
-
-**Response**:
-```json
+Response:
 {
-  "secret": "BASE32SECRET",
+  "secret": "JBSWY3DPEHPK3PXP",
   "qr_code_url": "data:image/png;base64,...",
   "backup_codes": [
-    "XXXX-XXXX-XXXX",
-    "YYYY-YYYY-YYYY",
+    "AAAA-BBBB-CCCC",
+    "DDDD-EEEE-FFFF",
     ...
   ]
 }
 ```
 
-Generates TOTP secret, QR code, and 8 backup codes. Data cached for 15 minutes.
+### Enable 2FA
+```http
+POST /api/2fa/enable
+Authorization: Bearer <token>
+Content-Type: application/json
 
-### 2. Enable 2FA
-
-**POST** `/api/2fa/enable`
-
-**Auth**: Required
-
-**Body**:
-```json
 {
   "code": "123456"
 }
+
+Response:
+{
+  "message": "2FA enabled successfully"
+}
 ```
 
-Verifies code and enables 2FA for user. Saves hashed backup codes.
+### Verify 2FA Code
+```http
+POST /api/2fa/verify
+Authorization: Bearer <token>
+Content-Type: application/json
 
-### 3. Verify Code
-
-**POST** `/api/2fa/verify`
-
-**Auth**: Required
-
-**Body**:
-```json
 {
   "code": "123456"
 }
-```
 
-Verifies TOTP code. Valid within ±30 second window.
-
-### 4. Verify Backup Code
-
-**POST** `/api/2fa/verify-backup`
-
-**Auth**: Required
-
-**Body**:
-```json
+Response:
 {
-  "backup_code": "XXXX-XXXX-XXXX"
+  "verified": true
 }
 ```
 
-Verifies and consumes backup code (one-time use).
+### Verify Backup Code
+```http
+POST /api/2fa/verify-backup
+Authorization: Bearer <token>
+Content-Type: application/json
 
-### 5. Disable 2FA
+{
+  "backup_code": "AAAA-BBBB-CCCC"
+}
 
-**POST** `/api/2fa/disable`
+Response:
+{
+  "verified": true
+}
+```
 
-**Auth**: Required
+### Disable 2FA
+```http
+POST /api/2fa/disable
+Authorization: Bearer <token>
+Content-Type: application/json
 
-**Body**:
-```json
 {
   "password": "user_password"
 }
-```
 
-Disables 2FA and removes all secrets.
-
-### 6. Get Status
-
-**GET** `/api/2fa/status`
-
-**Auth**: Required
-
-**Response**:
-```json
+Response:
 {
-  "enabled": true,
-  "method": "totp",
-  "backup_codes_remaining": 7
+  "message": "2FA disabled successfully"
 }
 ```
 
-## Usage Flow
+### Get 2FA Status
+```http
+GET /api/2fa/status
+Authorization: Bearer <token>
 
-### Setup Flow
-
-1. User clicks "Enable 2FA"
-2. Call `/api/2fa/setup`
-3. Display QR code + backup codes
-4. User scans QR code with authenticator app
-5. User enters code from app
-6. Call `/api/2fa/enable` with code
-7. 2FA now enabled
-
-### Login Flow (Enhanced)
-
-1. User enters email + password
-2. If 2FA enabled, show verification screen
-3. User enters TOTP code (or backup code)
-4. Call `/api/2fa/verify`
-5. Grant access
-
-### Disable Flow
-
-1. User requests to disable 2FA
-2. Verify password
-3. Call `/api/2fa/disable`
-4. 2FA disabled
-
-## Frontend Integration
-
-### Setup Component
-
-```tsx
-import TwoFactorSetup from '@/components/auth/TwoFactorSetup'
-
-<TwoFactorSetup onComplete={() => router.push('/dashboard')} />
+Response:
+{
+  "enabled": true,
+  "method": "totp",
+  "backup_codes_remaining": 8
+}
 ```
 
-### Verification Component
+### Complete 2FA Login
+```http
+POST /api/auth/login/2fa
+Content-Type: application/json
 
-```tsx
-import TwoFactorVerify from '@/components/auth/TwoFactorVerify'
+{
+  "user_id": "uuid",
+  "code": "123456"
+}
 
-<TwoFactorVerify 
-  onVerified={() => {/* Grant access */}}
-  onCancel={() => {/* Back to login */}}
-/>
+Response:
+{
+  "access_token": "...",
+  "token_type": "bearer",
+  "user": { ... }
+}
 ```
+
+## Login Flow with 2FA
+
+1. User submits credentials to `/api/auth/login`
+2. If user has 2FA enabled:
+   - Server returns 403 with `X-Requires-2FA: true` header
+   - Pending login stored in Redis cache (5 min expiration)
+3. Frontend shows 2FA verification screen
+4. User enters TOTP code or backup code
+5. Submit to `/api/auth/login/2fa`
+6. On success, receive access token and complete login
+
+## Setup Process
+
+### User Setup Flow:
+1. User navigates to Security Settings
+2. Clicks "Setup 2FA"
+3. Backend generates secret and QR code
+4. User scans QR code with authenticator app (Google Authenticator, Authy, etc.)
+5. User saves backup codes
+6. User enters verification code
+7. 2FA is enabled
+
+### Authenticator Apps:
+- Google Authenticator (iOS/Android)
+- Microsoft Authenticator (iOS/Android)
+- Authy (iOS/Android/Desktop)
+- 1Password
+- LastPass Authenticator
 
 ## Security Features
 
-### 1. TOTP Implementation
+### Password Hashing
+- Backup codes are hashed using SHA-256 before storage
+- Codes are single-use and removed after verification
 
-- 30-second time windows
-- SHA-1 hashing (TOTP standard)
-- ±1 window validation (90 seconds total)
-- Base32 encoded secrets
+### Rate Limiting
+- Login attempts are rate-limited
+- 2FA verification attempts tracked
 
-### 2. Backup Codes
+### Session Management
+- Pending 2FA logins expire after 5 minutes
+- Setup sessions expire after 15 minutes
 
-- 8 codes generated per setup
-- SHA-256 hashed before storage
-- One-time use (consumed after verification)
-- Remaining count tracked
-
-### 3. Audit Logging
-
-All 2FA verifications logged:
-- User ID
-- Method (totp/backup_code)
-- Success/failure
-- Timestamp
-- IP address (optional)
-
-### 4. Event Bus Integration
-
-Events emitted:
-- `2fa.enabled` - When user enables 2FA
-- `2fa.disabled` - When user disables 2FA
-
-Other modules can listen to these events.
-
-## Code Quality
-
-✅ All files ≤200 LOC
-✅ Meaningful naming
-✅ Minimal comments
-✅ Type hints throughout
-✅ Async/await patterns
-✅ Error handling
-✅ Logging
+### Audit Trail
+- All 2FA verification attempts logged
+- Includes success/failure, method, timestamp
+- IP address tracking (when implemented)
 
 ## Testing
 
-### Manual Test Flow
-
+### Run Tests
 ```bash
-# 1. Setup
-curl -X POST http://localhost:8000/api/2fa/setup \
-  -H "Authorization: Bearer YOUR_TOKEN"
-
-# 2. Get code from authenticator app
-
-# 3. Enable
-curl -X POST http://localhost:8000/api/2fa/enable \
-  -H "Authorization: Bearer YOUR_TOKEN" \
-  -d '{"code": "123456"}'
-
-# 4. Verify
-curl -X POST http://localhost:8000/api/2fa/verify \
-  -H "Authorization: Bearer YOUR_TOKEN" \
-  -d '{"code": "123456"}'
+cd backend
+pytest tests/test_two_factor.py -v
 ```
 
-### Compatible Authenticator Apps
+### Manual Testing Checklist
 
-- Google Authenticator
-- Microsoft Authenticator
-- Authy
-- 1Password
-- Bitwarden
-- Any TOTP-compatible app
+1. **Setup 2FA**
+   - [ ] Generate QR code
+   - [ ] Receive backup codes
+   - [ ] Secret stored temporarily in cache
 
-## Plugin Architecture
+2. **Enable 2FA**
+   - [ ] Valid code enables 2FA
+   - [ ] Invalid code rejected
+   - [ ] Data persisted to database
+   - [ ] Cache cleared after enable
 
-This module is auto-discovered by the plugin registry:
+3. **Login with 2FA**
+   - [ ] Login requires 2FA verification
+   - [ ] Valid TOTP code completes login
+   - [ ] Invalid code rejected
+   - [ ] Backup code works
+   - [ ] Used backup code removed
 
-1. Place in `backend/two_factor/`
-2. Must have `router.py` with `router` export
-3. Automatically loaded on startup
-4. No code changes needed elsewhere!
+4. **Disable 2FA**
+   - [ ] Password required
+   - [ ] 2FA data cleared from database
+   - [ ] Login works without 2FA
 
-## Database Schema
+5. **Status Check**
+   - [ ] Correct status returned
+   - [ ] Backup code count accurate
 
-### Profiles Table (Extended)
+## Frontend Integration
 
+### Components:
+- `TwoFactorSetup` - Setup wizard with QR code
+- `TwoFactorVerify` - Verification during login
+- `TwoFactorDisable` - Disable 2FA
+- `SettingsPage` - Security settings page
+
+### API Client Functions:
+```typescript
+setup2FA()
+enable2FA(code)
+verify2FA(code)
+verifyBackupCode(backupCode)
+disable2FA(password, code?)
+get2FAStatus()
+complete2FALogin(userId, code)
+```
+
+## Troubleshooting
+
+### QR Code Not Scanning
+- Ensure adequate screen brightness
+- Try manual entry with the secret key
+- Check authenticator app compatibility
+
+### Code Not Working
+- Verify device time is synchronized (NTP)
+- Code expires every 30 seconds
+- Check for typos in manual entry
+
+### Lost Backup Codes
+- User must disable 2FA (if they can still log in)
+- Admin can disable 2FA for user in database
+- Re-enable and generate new codes
+
+### Database Issues
 ```sql
-two_factor_enabled      BOOLEAN
-two_factor_secret       TEXT (encrypted)
-two_factor_method       TEXT ('totp')
-backup_codes            TEXT[] (hashed)
-two_factor_enabled_at   TIMESTAMP
+-- Check 2FA status for user
+SELECT two_factor_enabled, two_factor_method, 
+       array_length(backup_codes, 1) as backup_codes_count
+FROM profiles 
+WHERE id = 'user_id';
+
+-- View recent 2FA logs
+SELECT * FROM two_factor_logs 
+WHERE user_id = 'user_id' 
+ORDER BY verified_at DESC 
+LIMIT 10;
+
+-- Disable 2FA for user (admin only)
+UPDATE profiles 
+SET two_factor_enabled = false,
+    two_factor_secret = NULL,
+    two_factor_method = NULL,
+    backup_codes = ARRAY[]::text[]
+WHERE id = 'user_id';
 ```
 
-### Two-Factor Logs Table
-
-```sql
-id              UUID
-user_id         UUID (FK)
-method          TEXT
-success         BOOLEAN
-verified_at     TIMESTAMP
-ip_address      TEXT
-```
-
-## Common Issues
-
-**QR Code not displaying:**
-- Check `qrcode[pil]` installed
-- Verify PIL/Pillow installed
-
-**Code always invalid:**
-- Check server time is synchronized (NTP)
-- TOTP requires accurate time
-
-**Backup code not working:**
-- Codes are one-time use
-- Check remaining count in status
+## Dependencies
+- `pyotp` - TOTP generation and verification
+- `qrcode` - QR code generation
+- `Pillow` - Image processing for QR codes
 
 ## Future Enhancements
-
-- SMS 2FA (requires Twilio)
-- Hardware key support (WebAuthn)
-- Recovery email option
-- Trusted device management
-- Admin 2FA enforcement
-
-## Performance
-
-- QR generation: < 100ms
-- Code verification: < 10ms
-- Backup code check: < 50ms
-- Setup caching: 15 minutes in Redis
-
-All operations are fast and non-blocking!
-
+- [ ] SMS-based 2FA
+- [ ] WebAuthn/FIDO2 support
+- [ ] Remember device functionality
+- [ ] IP address logging
+- [ ] Backup code regeneration
+- [ ] 2FA enforcement for admin users
+- [ ] Email notifications on 2FA changes

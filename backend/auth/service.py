@@ -101,6 +101,26 @@ class AuthService:
                     "full_name": credentials.email.split("@")[0]
                 }
             
+            # Check if user has 2FA enabled
+            if profile.get("two_factor_enabled"):
+                # Store pending login in cache for 2FA verification
+                await self.cache.set_json(
+                    f"pending_2fa:{auth_response.user.id}",
+                    {
+                        "user_id": auth_response.user.id,
+                        "email": credentials.email,
+                        "timestamp": datetime.utcnow().isoformat()
+                    },
+                    expiration=300  # 5 minutes
+                )
+                
+                # Return response indicating 2FA is required
+                raise HTTPException(
+                    status_code=status.HTTP_403_FORBIDDEN,
+                    detail="2FA verification required",
+                    headers={"X-Requires-2FA": "true", "X-User-ID": auth_response.user.id}
+                )
+            
             access_token = self.create_access_token(
                 auth_response.user.id,
                 credentials.email
@@ -111,6 +131,8 @@ class AuthService:
                 user=profile
             )
         
+        except HTTPException:
+            raise
         except Exception as e:
             logger.error(f"Login error: {str(e)}")
             raise HTTPException(
@@ -132,4 +154,28 @@ class AuthService:
     async def logout_user(self, user_id: str):
         await self.cache.delete(f"user_session:{user_id}")
         return {"message": "Logged out successfully"}
+    
+    async def complete_2fa_login(self, user_id: str) -> TokenResponse:
+        """Complete login after successful 2FA verification"""
+        profile = await self.db.get_by_id("profiles", user_id)
+        
+        if not profile:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="User not found"
+            )
+        
+        # Clear pending 2FA login
+        await self.cache.delete(f"pending_2fa:{user_id}")
+        
+        access_token = self.create_access_token(
+            user_id,
+            profile["email"]
+        )
+        
+        return TokenResponse(
+            access_token=access_token,
+            user=profile
+        )
+
 

@@ -61,3 +61,5 @@ print("2. Install: pip install -r requirements.txt")
 print("3. Run database schema in Supabase")
 print("4. Start: uvicorn main:app --reload")
 
+
+

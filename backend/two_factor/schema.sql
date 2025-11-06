@@ -30,3 +30,5 @@ CREATE POLICY "Admins can view all 2FA logs" ON two_factor_logs
         EXISTS (SELECT 1 FROM profiles WHERE id = auth.uid() AND is_admin = TRUE)
     );
 
+
+

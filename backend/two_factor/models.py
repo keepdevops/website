@@ -27,3 +27,5 @@ class TwoFactorStatus(BaseModel):
     method: Optional[str] = None
     backup_codes_remaining: int = 0
 
+
+

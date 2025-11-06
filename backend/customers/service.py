@@ -87,3 +87,5 @@ class CustomerService:
         result = await self.db.get_all("subscriptions", {"user_id": customer_id}, limit=1)
         return result.data[0] if result.data else None
 
+
+

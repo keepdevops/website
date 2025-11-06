@@ -1,5 +1,5 @@
 from fastapi import APIRouter, Depends, HTTPException, status
-from auth.models import UserRegister, UserLogin, TokenResponse, PasswordReset, UserUpdate
+from auth.models import UserRegister, UserLogin, TokenResponse, PasswordReset, UserUpdate, TwoFactorLoginVerify
 from auth.service import AuthService
 from core.database import get_database, Database
 from core.cache import get_cache, Cache
@@ -99,4 +99,37 @@ async def request_password_reset(
 @router.get("/verify-token")
 async def verify_token(current_user: dict = Depends(get_current_user)):
     return {"valid": True, "user": current_user}
+
+@router.post("/login/2fa", response_model=TokenResponse)
+async def verify_2fa_login(
+    verify_data: TwoFactorLoginVerify,
+    auth_service: AuthService = Depends(get_auth_service),
+    db: Database = Depends(get_database),
+    cache: Cache = Depends(get_cache)
+):
+    """Complete login after 2FA verification"""
+    # Import here to avoid circular dependency
+    from two_factor.service import TwoFactorService
+    
+    # Check if there's a pending 2FA login
+    pending_login = await cache.get_json(f"pending_2fa:{verify_data.user_id}")
+    if not pending_login:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="No pending 2FA login found or session expired"
+        )
+    
+    # Verify the 2FA code
+    two_factor_service = TwoFactorService(db, cache)
+    is_valid = await two_factor_service.verify_totp(verify_data.user_id, verify_data.code)
+    
+    if not is_valid:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid 2FA code"
+        )
+    
+    # Complete the login
+    return await auth_service.complete_2fa_login(verify_data.user_id)
+
 

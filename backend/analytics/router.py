@@ -45,3 +45,5 @@ async def get_recent_activity(
     activities = await analytics_service.get_recent_activity()
     return {"activities": activities}
 
+
+

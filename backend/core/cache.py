@@ -1,61 +1,64 @@
-import redis.asyncio as redis
 from typing import Optional
-from functools import lru_cache
-import json
-from config import settings
+from core.cache_interface import CacheProviderInterface
+from core.cache_provider_factory import get_cache_provider
+import logging
 
-_redis_client: Optional[redis.Redis] = None
+logger = logging.getLogger(__name__)
 
-async def get_redis_client() -> redis.Redis:
-    global _redis_client
-    if _redis_client is None:
-        _redis_client = await redis.from_url(
-            settings.redis_url,
-            encoding="utf-8",
-            decode_responses=True
-        )
-    return _redis_client
+# Legacy support - keep old import working
+_provider_instance: Optional[CacheProviderInterface] = None
+
+
+async def get_redis_client():
+    """Legacy function - now returns cache provider"""
+    global _provider_instance
+    if _provider_instance is None:
+        _provider_instance = get_cache_provider()
+    return _provider_instance
+
 
 class Cache:
-    def __init__(self):
-        self._client: Optional[redis.Redis] = None
+    """High-level cache service using pluggable providers"""
     
-    async def _get_client(self) -> redis.Redis:
-        if self._client is None:
-            self._client = await get_redis_client()
-        return self._client
+    def __init__(self, provider: Optional[CacheProviderInterface] = None):
+        self.provider = provider or get_cache_provider()
     
     async def get(self, key: str) -> Optional[str]:
-        client = await self._get_client()
-        return await client.get(key)
+        """Get value from cache"""
+        return await self.provider.get(key)
     
     async def get_json(self, key: str) -> Optional[dict]:
-        value = await self.get(key)
-        return json.loads(value) if value else None
+        """Get JSON value from cache"""
+        return await self.provider.get_json(key)
     
     async def set(self, key: str, value: str, expiration: int = 3600) -> bool:
-        client = await self._get_client()
-        return await client.set(key, value, ex=expiration)
+        """Set value in cache"""
+        return await self.provider.set(key, value, expiration)
     
     async def set_json(self, key: str, value: dict, expiration: int = 3600) -> bool:
-        return await self.set(key, json.dumps(value), expiration)
+        """Set JSON value in cache"""
+        return await self.provider.set_json(key, value, expiration)
     
     async def delete(self, key: str) -> bool:
-        client = await self._get_client()
-        return await client.delete(key) > 0
+        """Delete key from cache"""
+        return await self.provider.delete(key)
     
     async def exists(self, key: str) -> bool:
-        client = await self._get_client()
-        return await client.exists(key) > 0
+        """Check if key exists"""
+        return await self.provider.exists(key)
     
     async def increment(self, key: str, amount: int = 1) -> int:
-        client = await self._get_client()
-        return await client.incrby(key, amount)
+        """Increment numeric value"""
+        return await self.provider.increment(key, amount)
     
     async def expire(self, key: str, seconds: int) -> bool:
-        client = await self._get_client()
-        return await client.expire(key, seconds)
+        """Set expiration on key"""
+        return await self.provider.expire(key, seconds)
+
 
 def get_cache() -> Cache:
+    """Get Cache instance with configured provider"""
     return Cache()
+
+
 
