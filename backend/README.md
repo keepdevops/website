@@ -13,24 +13,58 @@ Modular FastAPI backend with plugin architecture. All files are constrained to �
 
 ## Setup
 
-1. Install dependencies:
-```bash
-pip install -r requirements.txt
-```
+1. **Install dependencies**
+   ```bash
+   pip install -r requirements.txt
+   ```
 
-2. Copy environment file:
-```bash
-cp env.example .env
-```
+2. **Create your `.env`**
+   ```bash
+   cp env.example .env
+   ```
+   Populate Supabase, Stripe, and provider keys. For local development we recommend:
+   - `CACHE_PROVIDER=redis`
+   - `RATE_LIMIT_PROVIDER=redis`
+   - `REDIS_URL=redis://localhost:6379`
+   - `SUPABASE_URL`, `SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_KEY`
+   - `SUPABASE_STORAGE_BUCKET=uploads`
 
-3. Configure environment variables in `.env`
+3. **Start Redis locally**
+   ```bash
+   ./scripts/run_redis_docker.sh start
+   ```
+   This helper ensures a Redis 7 container is running on port 6379. Use `status`, `stop`, or `logs` as needed.
 
-4. Run database migrations (execute schema.sql in Supabase SQL editor)
+4. **Apply Supabase migrations**
+   Load the schema files into your project database (SQL editor, Supabase CLI, or `psql`):
+   - `backend/subscriptions/schema.sql`
+   - `backend/supabase_schema.sql`
+   - Optional patches such as `supabase_fix_duplicate_user.sql`
 
-5. Start the server:
-```bash
-uvicorn main:app --reload
-```
+   Example with `psql`:
+   ```bash
+   export SUPABASE_CONN="postgresql://postgres:<password>@<host>:5432/postgres"
+   cat backend/subscriptions/schema.sql | psql "$SUPABASE_CONN"
+   cat backend/supabase_schema.sql     | psql "$SUPABASE_CONN"
+   ```
+
+5. **Seed demo data**
+   ```bash
+   ./scripts/seed_demo_data.py
+   ```
+   The script confirms/creates demo users, profiles, products, campaigns, and subscriptions. Rerun any time after migrations.
+
+6. **Enable Attack Protection (recommended)**
+   In Supabase Dashboard → **Authentication → Attack protection**, toggle on **HaveIBeenPwned** password checks.
+
+7. **Launch the API**
+   ```bash
+   uvicorn main:app --host 0.0.0.0 --port 8000 --reload
+   ```
+
+8. **Optional helpers**
+   - `./scripts/verify_supabase_user.py <email>` to force-confirm a Supabase account.
+   - `./scripts/run_redis_docker.sh status` to verify Redis health.
 
 ## Deployment to Render
 
@@ -70,6 +104,9 @@ Each module is self-contained:
 - Rate limiting on auth endpoints
 - RLS policies on database tables
 - Redis-based idempotency for webhooks
+
+
+
 
 
 
